@@ -1,10 +1,7 @@
 import React from "react";
 import { ThemeProvider, createGlobalStyle } from "styled-components";
 import { darkTheme } from "./Theme";
-import {
-  DragDropContext,
-  DropResult,
-} from "react-beautiful-dnd";
+import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import styled from "styled-components";
 import { useRecoilState } from "recoil";
 import { toDoState } from "./atoms";
@@ -87,21 +84,41 @@ const Wrapper = styled.div`
 
 const Boards = styled.div`
   display: grid;
+  gap: 10px;
   grid-template-columns: repeat(3, 1fr);
 `;
 
-
-
 function App() {
   const [toDos, setToDos] = useRecoilState(toDoState);
+
   const onDragEnd = ({ draggableId, destination, source }: DropResult) => {
     if (!destination) return;
-    setToDos((oldToDos) => {
-      const copyToDos = [...oldToDos];
-      copyToDos.splice(source.index, 1);
-      copyToDos.splice(destination.index, 0, draggableId);
-      return copyToDos;
-    });
+
+    if (destination?.droppableId === source.droppableId) {
+      setToDos((allBoards) => {
+        const boardCopy = [...allBoards[source.droppableId]];
+        const taskObj = boardCopy[source.index];
+        boardCopy.splice(source.index, 1);
+        boardCopy.splice(destination.index, 0, taskObj);
+        return {
+          ...allBoards,
+          [destination.droppableId]: [...boardCopy],
+        };
+      });
+    } else {
+      setToDos((allBoards) => {
+        const sourceCopy = [...allBoards[source.droppableId]];
+        const destinationCopy = [...allBoards[destination.droppableId]];
+        const taskObj = sourceCopy[source.index];
+        sourceCopy.splice(source.index, 1); // source index 잘라내기
+        destinationCopy.splice(destination.index, 0, taskObj); // 목적지 보드에 아이템 넣어주기
+        return {
+          ...allBoards,
+          [source.droppableId]: [...sourceCopy],
+          [destination.droppableId]: [...destinationCopy],
+        };
+      });
+    }
   };
 
   return (
@@ -111,12 +128,9 @@ function App() {
         <DragDropContext onDragEnd={onDragEnd}>
           <Wrapper>
             <Boards>
-              {
-                Object.keys(toDos).map(val => {
-                  <Board toDos={ toDos[val]}
-                })
-              }
-              <Board />
+              {Object.keys(toDos).map((boardId) => (
+                <Board key={boardId} boardId={boardId} toDos={toDos[boardId]} />
+              ))}
             </Boards>
           </Wrapper>
         </DragDropContext>
